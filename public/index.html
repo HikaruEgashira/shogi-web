@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#23364b">
-  <meta name="description" content="やねうら王WASMとつようら王11microを使ったブラウザ将棋。">
+  <meta name="description" content="Shogi with YaneuraOu WASM and TuyouraOu 11micro.">
   <title>Shogi</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
@@ -12,36 +12,42 @@
 </head>
 <body>
   <header class="masthead">
-    <a class="brand" href="./"><span class="brand-piece" aria-hidden="true">P</span><span data-i18n="title">Shogi</span></a>
-    <div class="header-controls"><span class="privacy" data-i18n="privacy">Game saved on this device</span><label class="language-control"><span data-i18n="language">Language</span><select id="language"><option value="en">English</option><option value="ja">日本語</option></select></label></div>
+    <a class="brand" href="./" data-i18n="title">Shogi</a>
+    <span id="status" role="status" aria-live="polite">Ready</span>
+    <button id="settings-open" class="icon-button" data-i18n-label="setup" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button>
   </header>
   <main>
-    <section class="play-area" aria-label="対局">
-      <div class="player opponent"><span class="avatar" aria-hidden="true">王</span><div><h1>TuyouraOu<span>11micro</span></h1><p id="opponent-side">後手</p></div><span class="player-tag" data-i18n="opponent">Opponent</span></div>
-      <div id="opponent-hand" class="hand" aria-label="相手の持ち駒"></div>
-      <div class="board-frame"><div id="files" class="files" aria-hidden="true"></div><div id="board" class="board" role="group" aria-label="将棋盤"></div><div id="ranks" class="ranks" aria-hidden="true"></div></div>
-      <div id="human-hand" class="hand" aria-label="あなたの持ち駒"></div>
-      <div class="player human"><span class="avatar" aria-hidden="true">玉</span><div><h2 data-i18n="you">You</h2><p id="human-side">先手</p></div><span id="turn-tag" class="player-tag">準備中</span></div>
-      <p class="board-help" data-i18n="help">Select a piece, then its destination. Select a piece in hand to drop it.</p><p id="piece-guide" class="board-help" data-i18n="pieceGuide"></p>
+    <section class="play-area" aria-label="Game">
+      <div class="player opponent"><span class="player-symbol" aria-hidden="true">☖</span><h1>TuyouraOu <span>11micro</span></h1><span id="opponent-side" class="side-label"></span></div>
+      <div id="opponent-hand" class="hand" aria-label="Opponent's pieces in hand"></div>
+      <div class="board-frame"><div id="files" class="files" aria-hidden="true"></div><div id="board" class="board" role="group" aria-label="Shogi board"></div><div id="ranks" class="ranks" aria-hidden="true"></div></div>
+      <div id="human-hand" class="hand" aria-label="Your pieces in hand"></div>
+      <div class="player human"><span class="player-symbol" aria-hidden="true">☗</span><h2 data-i18n="you">You</h2><span id="human-side" class="side-label"></span></div>
     </section>
-    <aside class="sidebar">
-      <section class="status-panel"><div class="status-kicker"><span id="status-dot"></span><span id="phase">対局の準備</span></div><h2 id="status" role="status" aria-live="polite">対局前</h2><p id="detail">手番と思考時間を選択してください。</p></section>
-      <section class="setup" aria-label="対局設定">
-        <div class="field"><label for="side" data-i18n="side">あなたの手番</label><select id="side"><option value="b" data-i18n="sente">先手（先に指す）</option><option value="w" data-i18n="gote">後手（あとに指す）</option></select></div>
-        <div class="field"><label for="time" data-i18n="time">相手の思考時間</label><select id="time"><option value="300" data-i18n="fast">さくさく · 0.3秒</option><option value="1500" data-i18n="standard" selected>標準 · 1.5秒</option><option value="5000" data-i18n="slow">じっくり · 5秒</option></select></div>
-        <div class="field"><label for="notation" data-i18n="pieces">Piece notation</label><select id="notation"><option value="letters" data-i18n="letters">Letters</option><option value="kanji" data-i18n="kanji">Kanji</option></select></div>
-        <button id="start" class="primary">対局を始める</button>
-        <button id="resume" data-i18n="resume" class="secondary" hidden>前の対局を再開</button>
-        <p class="download-note" data-i18n="download"></p>
-        <div class="game-actions"><button id="undo" data-i18n="undo" disabled>待った</button><button id="resign" data-i18n="resign" disabled>投了</button><button id="declare" data-i18n="declare" hidden>入玉宣言</button></div>
-      </section>
-      <section class="record" aria-labelledby="record-title"><div class="section-heading"><h2 id="record-title" data-i18n="record">棋譜</h2><span id="move-count">0 手</span></div><ol id="history" aria-label="指し手一覧"><li class="empty-history">指し手はありません。</li></ol><button id="export" data-i18n="export" class="text-button" disabled>棋譜を保存（USI）</button></section>
-      <details class="about"><summary data-i18n="about">Rules and compatibility</summary><p data-i18n="aboutEngine"></p><p data-i18n="aboutRules"></p><p data-i18n="aboutBrowser"></p><a data-i18n="article" href="https://yaneurao.fanbox.cc/posts/12761272" target="_blank" rel="noopener noreferrer">Evaluation release article</a></details>
-    </aside>
+    <div class="controls">
+      <div class="game-actions">
+        <button id="undo" class="icon-button" data-i18n-label="undo" aria-label="Undo" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5-5 5 5 5M3 10h10a6 6 0 0 1 0 12" transform="translate(0 -2)"/></svg></button>
+        <button id="resign" class="icon-button" data-i18n-label="resign" aria-label="Resign" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg></button>
+        <button id="export" class="icon-button" data-i18n-label="export" aria-label="Download moves" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>
+        <button id="declare" data-i18n="declare" hidden>Declare win</button>
+      </div>
+      <div class="start-actions"><button id="resume" data-i18n="resume" hidden>Resume</button><button id="start" class="primary">Start</button></div>
+    </div>
+    <p id="detail" class="detail" hidden></p>
+    <details id="record" class="record"><summary><span data-i18n="record">Moves</span><span id="move-count">0</span></summary><ol id="history" aria-label="Moves"></ol></details>
   </main>
-  <footer><span data-i18n="title">Shogi</span><nav aria-label="関連リンク"><a href="./licenses.html" data-i18n="license">ライセンス・ソース</a><a href="https://github.com/HikaruEgashira/shogi-web" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
-  <dialog id="promotion" aria-labelledby="promotion-title"><h2 id="promotion-title" data-i18n="promotion">成りますか？</h2><p data-i18n="promotionDetail">This move allows promotion.</p><div class="dialog-actions"><button id="promote" data-i18n="promote" class="primary">成る</button><button id="unpromote" data-i18n="unpromote" class="secondary">成らない</button></div></dialog>
-  <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button id="confirm-yes" data-i18n="continue" class="primary">続ける</button><button id="confirm-no" data-i18n="cancel" class="secondary">戻る</button></div></dialog>
-  <noscript>JavaScript is required. 対局には JavaScript を有効にしてください。</noscript>
+  <footer><a href="./licenses.html" data-i18n="license">Licenses</a><a href="https://github.com/HikaruEgashira/shogi-web" target="_blank" rel="noopener noreferrer">GitHub</a></footer>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="dialog-heading"><h2 id="settings-title" data-i18n="setup">Settings</h2><button id="settings-close" class="icon-button" data-i18n-label="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div class="field"><label for="language" data-i18n="language">Language</label><select id="language"><option value="en">English</option><option value="ja">日本語</option></select></div>
+    <div class="field"><label for="side" data-i18n="side">Your side</label><select id="side"><option value="b" data-i18n="sente">First</option><option value="w" data-i18n="gote">Second</option></select></div>
+    <div class="field"><label for="time" data-i18n="time">Thinking time</label><select id="time"><option value="300" data-i18n="fast">0.3 s</option><option value="1500" data-i18n="standard" selected>1.5 s</option><option value="5000" data-i18n="slow">5 s</option></select></div>
+    <div class="field"><label for="notation" data-i18n="pieces">Pieces</label><select id="notation"><option value="letters" data-i18n="letters">Letters</option><option value="kanji" data-i18n="kanji">Kanji</option></select></div>
+    <p id="piece-guide" class="piece-guide" data-i18n="pieceGuide"></p>
+    <details class="about"><summary data-i18n="about">Rules</summary><p data-i18n="help"></p><p data-i18n="aboutEngine"></p><p data-i18n="aboutRules"></p><p data-i18n="aboutBrowser"></p><a data-i18n="article" href="https://yaneurao.fanbox.cc/posts/12761272" target="_blank" rel="noopener noreferrer">Evaluation release article</a></details>
+  </dialog>
+  <dialog id="promotion" aria-labelledby="promotion-title"><h2 id="promotion-title" data-i18n="promotion">Promote?</h2><div class="dialog-actions"><button id="promote" class="primary" data-i18n="promote">Promote</button><button id="unpromote" data-i18n="unpromote">Keep</button></div></dialog>
+  <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button id="confirm-yes" class="primary" data-i18n="continue">Continue</button><button id="confirm-no" data-i18n="cancel">Cancel</button></div></dialog>
+  <noscript>JavaScript is required. JavaScriptを有効にしてください。</noscript>
 </body>
 </html>

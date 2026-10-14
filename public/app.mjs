@@ -3,7 +3,7 @@ import { Engine } from './engine-client.mjs';
 import { START, PIECES, RANKS, parseSfen, parseState, moveLabel, readSaved } from './rules.mjs';
 
 const $ = id => document.getElementById(id);
-const SAVE_KEY = 'hitokyoku.v1';
+const SAVE_KEY = 'shogi.v1';
 let state = { ...parseSfen(START), sfen: START, legal: [], check: false };
 let human = 'b', moves = [], labels = [], selected = null, engine = null;
 let busy = false, started = false, result = '', resigned = false, thinkingTime = 1500;
@@ -22,6 +22,7 @@ function translatePage() {
   document.documentElement.lang = language;
   document.title = tr('title');
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-label]')) { el.setAttribute('aria-label', tr(el.dataset.i18nLabel)); el.title = tr(el.dataset.i18nLabel); }
   for (const [id, key] of [['board', 'board'], ['opponent-hand', 'opponentHand'], ['human-hand', 'yourHand'], ['history', 'record']]) $(id).setAttribute('aria-label', tr(key));
   $('language').value = language; $('notation').value = notation;
   status(...statusKeys);
@@ -34,12 +35,12 @@ function status(title, detail, phase = 'playing') {
   statusKeys = [title, detail, phase];
   $('status').textContent = tr(title);
   $('detail').textContent = tr(detail);
-  $('phase').textContent = tr(phase);
+  $('detail').hidden = !['loading', 'errorPhase'].includes(phase);
 }
 function save() {
   saved = { version: 1, human, time: thinkingTime, moves, resigned, result };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); }
-  catch { $('detail').textContent = tr('storageError'); }
+  catch { $('detail').textContent = tr('storageError'); $('detail').hidden = false; }
 }
 function pieceElement(piece) {
   const el = document.createElement('span');
@@ -49,6 +50,10 @@ function pieceElement(piece) {
   return el;
 }
 function render() {
+  document.querySelector('.human').classList.toggle('active', started && !result && state.turn === human);
+  document.querySelector('.opponent').classList.toggle('active', started && !result && state.turn !== human);
+  document.querySelector('.human .player-symbol').textContent = human === 'b' ? '☗' : '☖';
+  document.querySelector('.opponent .player-symbol').textContent = human === 'b' ? '☖' : '☗';
   const canPlay = started && !busy && !result && state.turn === human;
   const focused = document.activeElement?.dataset.square;
   const ranks = human === 'b' ? [...'abcdefghi'] : [...'ihgfedcba'];
@@ -59,6 +64,8 @@ function render() {
   const squares = ranks.flatMap(rank => files.map(file => {
     const square = file + rank, piece = state.board.get(square), button = document.createElement('button');
     button.className = `square${square === selected ? ' selected' : ''}${targets.has(square) ? ' legal' : ''}${moves.at(-1)?.slice(2, 4) === square ? ' last' : ''}`;
+    button.classList.toggle('last-from', moves.at(-1)?.slice(0, 2) === square);
+    button.classList.toggle('in-check', Boolean(state.check && piece?.type === 'K' && piece.side === state.turn));
     button.dataset.square = square;
     button.setAttribute('aria-label', `${file}${language === 'ja' ? RANKS['abcdefghi'.indexOf(rank)] : rank} ${piece ? tr(piece.side === human ? 'yourPiece' : 'opponentPiece', { piece: notation === 'kanji' ? PIECES[piece.type] : piece.type }) : tr('emptySquare')}${targets.has(square) ? ` ${tr('legal')}` : ''}`);
     button.setAttribute('aria-pressed', String(square === selected));
@@ -69,7 +76,7 @@ function render() {
   $('board').replaceChildren(...squares);
   if (focused && canPlay) squares.find(button => button.dataset.square === focused)?.focus({ preventScroll: true });
   for (const [id, side] of [['human-hand', human], ['opponent-hand', human === 'b' ? 'w' : 'b']]) {
-    const hand = $('' + id); hand.replaceChildren();
+    const hand = $(id); hand.replaceChildren();
     for (const type of ['R', 'B', 'G', 'S', 'N', 'L', 'P']) {
       const count = state.hands[side][type];
       if (!count) continue;
@@ -86,7 +93,6 @@ function render() {
   }
   $('human-side').textContent = tr(human === 'b' ? 'sente' : 'gote');
   $('opponent-side').textContent = tr(human === 'b' ? 'gote' : 'sente');
-  $('turn-tag').textContent = tr(result ? 'finished' : !started ? 'ready' : busy ? 'thinking' : 'yourTurn');
   $('start').disabled = busy;
   $('start').textContent = tr(started ? 'newGame' : 'start');
   $('side').disabled = started && !result;
@@ -229,6 +235,8 @@ $('export').onclick = () => {
   const link = Object.assign(document.createElement('a'), { href: url, download: `shogi-${new Date().toISOString().slice(0, 10)}.usi` });
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+$('settings-open').onclick = () => $('settings').showModal();
+$('settings-close').onclick = () => $('settings').close();
 $('language').onchange = () => {
   language = $('language').value;
   try { localStorage.setItem('shogi-language', language); } catch { /* Optional preference. */ }
