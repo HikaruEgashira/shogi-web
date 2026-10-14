@@ -27,7 +27,7 @@ bun run engine
 
 `engine/manifest.json` にソースのコミット、評価関数URL、評価関数とWASMのSHA-256、アーキテクチャを固定。`bun run build` はこれらのハッシュと、`public/source/` の配布ソースがビルド入力（manifest・patch・build script）と一致することを検査する。エンジンの入力を変えたら再ビルド後に `wasmSha256` を更新する。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
 
-`bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
+`bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。さらに headless Chrome で本番と同じヘッダーの下にアプリを読み込み、1手指してエンジンの応答を確認する。Google Chrome が必要で、`CHROME_BIN` で実行ファイルを指定できる。`bun scripts/play.mjs URL` は任意のURLに対して同じ実走を行う。
 
 `ccache` がPATHにあれば `EM_COMPILER_WRAPPER=ccache` でオブジェクトをキャッシュし、エンジンを差分で再ビルドする。CIも `.cache/ccache` を復元するので、`make clean` 後も変更のない翻訳単位は再コンパイルしない。
 
@@ -44,25 +44,27 @@ bun run engine
 | `site_url` | `SITE_URL` |
 | `deploy_role_arn` | `AWS_DEPLOY_ROLE_ARN` |
 
-main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければまず `engine:fetch` で公開中のリリースから取得し、入力が変わっていて取得できない場合だけEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
+`Test and deploy` は `build` と `promote` の2ジョブからなる。`build` は全てのpushとPRで走り、固定版WASMのビルド・テスト・ブラウザ実走を行う。mainのコミットは並列にビルドされ、それぞれ `releases/<commit>/` へ配信し、候補URLに対してヘッダー・チェックサム・配布ソースの検査（`smoke.mjs`）とブラウザ実走（`play.mjs`）をCloudFront経由で行う。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければまず `engine:fetch` で公開中のリリースから取得し、入力が変わっていて取得できない場合だけEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
+
+`promote` は `production` concurrency group で直列化され、公開中のコミットより古いコミットの切り替えは省略する。切り替えはバケット内で `releases/<commit>/` のエントリファイル（`index.html`、`licenses.html`、`version.json`）をルートへコピーし、CloudFrontを無効化してから公開URLに同じ検査と実走を行う。失敗した場合は直前に公開していたリリースへ戻してジョブを失敗させる。
 
 S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
 
 `shogi.egahika.dev` の証明書はモジュール内のACM（us-east-1）、DNSは **HikaruEgashira/egahika.dev** で管理する。CloudFrontへのCNAMEとACM検証用CNAMEはDNS-onlyで保持する。初回は証明書だけを適用し、`certificate_validation_records` のCNAMEをDNS側へ反映してから全体を適用する。検証用CNAMEは証明書の自動更新にも必要。
 
-配信物は `releases/<commit>/` に保存し、CloudFront経由で候補のHTML・ヘッダー・WASM・評価関数・配布ソースを検査してからルートのindex.htmlを切り替える。候補検査が失敗した場合は公開中のページを維持する。切り替えとキャッシュ無効化の後も同じ検査を実行する。`Watch production` が6時間ごとに公開中のページへ同じ検査を行い、配信物の破損や改竄をCIの失敗として検出する。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
+`Watch production` が6時間ごとに公開中のページへ同じ検査と実走を行い、配信物の破損や改竄をCIの失敗として検出する。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
 
 ### ロールバック
 
-既存の正常なコミットを `RELEASE_SHA` に指定し、次を実行する。必要な認証は通常配信と同じ。
+`Roll back` ワークフローに公開済みリリースのコミットを指定して実行する。`promote` と同じ切り替え・検査・自動復帰を行う。ローカルからは通常配信と同じ認証で次を実行する。
 
 ```sh
-for file in licenses.html version.json index.html; do
-  aws s3 cp "s3://$SITE_BUCKET/releases/$RELEASE_SHA/$file" "s3://$SITE_BUCKET/$file" --cache-control 'no-cache,max-age=0,must-revalidate'
-done
-aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json
-bun scripts/smoke.mjs "$SITE_URL" "$RELEASE_SHA"
+SITE_BUCKET=... DISTRIBUTION_ID=... SITE_URL=... bash scripts/promote.sh "$RELEASE_SHA"
 ```
+
+### 取り込み
+
+mainへの直接pushとPRのauto-mergeを受け付ける。PRでは `build` ジョブだけが走る。ruleset `main` は `build` の成功を必須とし、ブランチの削除とforce pushを禁止する。リポジトリ管理者はrulesetをbypassできる。`gh pr merge --auto --squash` は `build` 成功後に取り込み、ブランチを削除する。
 
 ## 対応範囲
 

@@ -71,35 +71,72 @@ test('build refuses a WASM or shipped source that does not match the pinned inpu
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('deployment verifies before switching pages and never promotes a failed candidate', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'shogi-deploy-'));
+// Stub `aws` and `bun` so the shell scripts are exercised against a command log instead of AWS.
+async function stubs(root, previous) {
+  await mkdir(join(root, 'bin'));
+  await writeFile(join(root, 'bin/aws'), `#!/bin/sh
+printf "aws %s\\n" "$*" >> "$TEST_LOG"
+case "$*" in
+  *"version.json -") printf '{"commit":"${previous}","engine":"${previous}"}\\n' ;;
+  *create-invalidation*) echo I1 ;;
+esac
+`, { mode: 0o755 });
+  await writeFile(join(root, 'bin/bun'), '#!/bin/sh\nprintf "%s %s\\n" "$1" "$2" >> "$TEST_LOG"\nexit "$TEST_VERIFY_EXIT"\n', { mode: 0o755 });
+  return (script, args, exit) => {
+    const logPath = join(root, 'commands.log');
+    return { logPath, result: writeFile(logPath, '').then(() => run('bash', [join(repo, 'scripts', script), ...args], {
+      cwd: root,
+      env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, TEST_LOG: logPath, TEST_VERIFY_EXIT: exit,
+        SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: commit },
+    })) };
+  };
+}
+
+test('publishing verifies the candidate over the CDN and never touches the public entry page', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'shogi-publish-'));
   try {
-    await mkdir(join(root, 'bin'));
     await mkdir(join(root, 'dist/engine'), { recursive: true });
     for (const file of ['nn.bin', 'progress.bin', 'yaneuraou.wasm']) await writeFile(join(root, 'dist/engine', file), 'fixture');
-    await writeFile(join(root, 'bin/aws'), '#!/bin/sh\nprintf "aws %s\\n" "$*" >> "$TEST_LOG"\n', { mode: 0o755 });
-    await writeFile(join(root, 'bin/bun'), '#!/bin/sh\nprintf "verify %s\\n" "$2" >> "$TEST_LOG"\nexit "$TEST_VERIFY_EXIT"\n', { mode: 0o755 });
+    const publish = await stubs(root, 'b'.repeat(40));
+    const candidate = `https://example.test/releases/${commit}/index.html`;
     for (const exit of ['1', '0']) {
-      const logPath = join(root, 'commands.log');
-      await writeFile(logPath, '');
-      const result = run('bash', [join(repo, 'scripts/deploy.sh')], {
-        cwd: root,
-        env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, TEST_LOG: logPath, TEST_VERIFY_EXIT: exit,
-          SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: commit },
-      });
+      const { logPath, result } = publish('publish.sh', [], exit);
       if (exit === '1') await assert.rejects(result);
       else await result;
       const log = await readFile(logPath, 'utf8');
-      const candidate = log.indexOf(`verify https://example.test/releases/${commit}/index.html`);
-      assert.ok(candidate > log.indexOf('engine/yaneuraou.wasm --content-type'));
+      assert.ok(log.indexOf(`scripts/smoke.mjs ${candidate}`) > log.indexOf('engine/yaneuraou.wasm --content-type'));
+      assert.doesNotMatch(log, /s3:\/\/test-site\/(index\.html|licenses\.html|version\.json)/);
+      assert.doesNotMatch(log, /cloudfront/);
+      if (exit === '0') assert.ok(log.indexOf(`scripts/play.mjs ${candidate}`) > log.indexOf(`scripts/smoke.mjs ${candidate}`));
+    }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('promotion switches the entry page last, verifies the public site, and restores the previous release on failure', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'shogi-promote-'));
+  const previous = 'b'.repeat(40);
+  try {
+    const promote = await stubs(root, previous);
+    for (const exit of ['1', '0']) {
+      const { logPath, result } = promote('promote.sh', [commit], exit);
+      if (exit === '1') await assert.rejects(result);
+      else await result;
+      const log = await readFile(logPath, 'utf8');
+      const entry = log.indexOf(`aws s3 cp s3://test-site/releases/${commit}/index.html s3://test-site/index.html --metadata-directive REPLACE --content-type text/html --cache-control no-cache,max-age=0,must-revalidate`);
+      assert.ok(log.indexOf('aws s3 cp s3://test-site/version.json -') < entry);
+      assert.ok(log.indexOf(`releases/${commit}/version.json s3://test-site/version.json --metadata-directive REPLACE --content-type application/json`) < entry);
+      const invalidation = log.indexOf('aws cloudfront create-invalidation');
+      assert.ok(invalidation > entry);
+      assert.ok(log.indexOf('aws cloudfront wait invalidation-completed --distribution-id test-distribution --id I1') > invalidation);
+      assert.ok(log.indexOf(`scripts/smoke.mjs https://example.test/`) > invalidation);
+      const restore = log.indexOf(`aws s3 cp s3://test-site/releases/${previous}/index.html s3://test-site/index.html`);
       if (exit === '1') {
-        assert.doesNotMatch(log, /s3:\/\/test-site\/(index.html|licenses.html|version.json)/);
-        assert.doesNotMatch(log, /cloudfront create-invalidation/);
+        assert.ok(restore > log.indexOf('scripts/smoke.mjs'));
+        assert.equal(log.match(/create-invalidation/g).length, 2);
       } else {
-        const promotion = log.indexOf('aws s3 cp dist/index.html');
-        assert.ok(promotion > candidate);
-        assert.ok(log.indexOf('aws cloudfront wait') > promotion);
-        assert.ok(log.indexOf('verify https://example.test/\n') > log.indexOf('aws cloudfront wait'));
+        assert.equal(restore, -1);
+        assert.ok(log.indexOf('scripts/play.mjs https://example.test/') > log.indexOf('scripts/smoke.mjs https://example.test/'));
+        assert.equal(log.match(/create-invalidation/g).length, 1);
       }
     }
   } finally { await rm(root, { recursive: true, force: true }); }

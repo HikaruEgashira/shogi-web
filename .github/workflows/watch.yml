@@ -22,3 +22,7 @@ jobs:
         run: bun scripts/smoke.mjs "${SITE_URL:-https://shogi.egahika.dev/}"
         env:
           SITE_URL: ${{ vars.SITE_URL }}
+      - name: Play a move in a browser
+        run: bun scripts/play.mjs "${SITE_URL:-https://shogi.egahika.dev/}"
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}

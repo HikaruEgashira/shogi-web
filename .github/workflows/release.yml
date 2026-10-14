@@ -8,14 +8,15 @@ on:
 
 permissions:
   contents: read
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Pull request pushes supersede each other; every main commit builds in parallel into its own release.
+    concurrency:
+      group: build-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     permissions:
       contents: read
       id-token: write
@@ -91,10 +92,51 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-northeast-1
-      - name: Publish and verify
+      - name: Publish the release candidate and verify it through the CDN
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+        env:
+          SITE_BUCKET: ${{ vars.SITE_BUCKET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: bash scripts/publish.sh
+
+  promote:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only the switch of the public entry page is serialized; a pending switch is superseded by a newer commit's.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Authenticate with AWS OIDC
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+      - name: Keep a newer commit that is already public
+        id: published
+        env:
+          SITE_BUCKET: ${{ vars.SITE_BUCKET }}
+        run: |
+          current=$( (aws s3 cp "s3://${SITE_BUCKET}/version.json" - 2>/dev/null || true) | sed -n 's/.*"commit":"\([a-f0-9]\{40\}\)".*/\1/p')
+          if [ "$current" != "$GITHUB_SHA" ] && git cat-file -e "$current" 2>/dev/null && git merge-base --is-ancestor "$GITHUB_SHA" "$current"; then
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Switch the public page, verify it, and restore the previous release on failure
+        if: steps.published.outputs.superseded != 'true'
         env:
           SITE_BUCKET: ${{ vars.SITE_BUCKET }}
           DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
           SITE_URL: ${{ vars.SITE_URL }}
-        run: bash scripts/deploy.sh
+        run: bash scripts/promote.sh "$GITHUB_SHA"
