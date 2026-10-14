@@ -14,7 +14,7 @@ if (process.env.GITHUB_SHA) {
   if (!/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA)) throw Error('Invalid release SHA');
   for (const file of ['index.html', 'licenses.html']) {
     const html = await readFile(`dist/${file}`, 'utf8');
-    await writeFile(`dist/${file}`, html.replaceAll(/\.\/(style\.css|app\.mjs|icon\.svg|source\/[^" ]+)/g, `./releases/${process.env.GITHUB_SHA}/$1`));
+    await writeFile(`dist/${file}`, html.replaceAll(/\.\/(style\.css|app\.mjs|icon\.svg|source\/[^" ]+)/g, `/releases/${process.env.GITHUB_SHA}/$1`));
   }
 }
 await writeFile('dist/version.json', JSON.stringify({ commit: process.env.GITHUB_SHA || 'local', engine: manifest.commit }) + '\n');

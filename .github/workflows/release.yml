@@ -10,7 +10,7 @@ permissions:
   contents: read
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   release:
@@ -26,20 +26,20 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
-      - name: Cache Emscripten
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: .cache/emsdk
-          key: emsdk-3.1.43-${{ runner.os }}-8f685c26ee9f672081e61e22c6aa60fa972d00a9
       - name: Cache built engine
         id: engine
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
-            .cache/YaneuraOu
             public/engine
             public/source
           key: engine-${{ runner.os }}-${{ hashFiles('engine/manifest.json', 'engine/browser.patch', 'scripts/build-engine.sh') }}
+      - name: Cache Emscripten
+        if: steps.engine.outputs.cache-hit != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .cache/emsdk
+          key: emsdk-3.1.43-${{ runner.os }}-8f685c26ee9f672081e61e22c6aa60fa972d00a9
       - name: Install pinned Emscripten
         if: steps.engine.outputs.cache-hit != 'true'
         run: |
@@ -59,9 +59,7 @@ jobs:
           source .cache/emsdk/emsdk_env.sh
           bun run engine
       - name: Test and build
-        run: |
-          bun test
-          bun run build
+        run: bun run check
       - name: Authenticate with AWS OIDC
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
         uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3

@@ -11,8 +11,7 @@ Bun 1.4以上、Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl �
 ```sh
 source /path/to/emsdk/emsdk_env.sh
 bun run engine
-bun test
-bun run build
+bun run check
 bun run dev
 ```
 
@@ -21,6 +20,12 @@ bun run dev
 `engine/manifest.json` にソースのコミット、評価関数URL、SHA-256、アーキテクチャを固定。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
 
 `bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
+
+### ハッカソンでの反復
+
+UI変更時は既存の `public/engine/` を使い、`bun run dev` → 編集・ブラウザ確認 → `bun run check` → 小さなコミットを main に pushする。エンジンの入力を変えたときだけ `bun run engine` を実行する。レビューでは変更の目的、壊してはいけない動作、検証結果を確認する。
+
+[Anthropicの設計原則](https://www.anthropic.com/engineering/redesigning-source-control)から、必要な成果物だけの取得と、main統合後・公開前の検証を採用する。Gitは継続使用する。PRの古い検証は新しいpushで取り消し、mainの配備は途中で中断せず直列に実行する。
 
 ## 配備
 
@@ -35,13 +40,13 @@ bun run dev
 | `site_url` | `SITE_URL` |
 | `deploy_role_arn` | `AWS_DEPLOY_ROLE_ARN` |
 
-main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。エンジンのビルド成果物とEmscripten SDKはキャッシュし、入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）が変わったときだけ再ビルドする。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
+main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
 
 S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
 
 `shogi.egahika.dev` の証明書はモジュール内のACM（us-east-1）、DNSは **HikaruEgashira/egahika.dev** で管理する。CloudFrontへのCNAMEとACM検証用CNAMEはDNS-onlyで保持する。初回は証明書だけを適用し、`certificate_validation_records` のCNAMEをDNS側へ反映してから全体を適用する。検証用CNAMEは証明書の自動更新にも必要。
 
-配信物は `releases/<commit>/` に保存し、最後にルートのindex.htmlを切り替える。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
+配信物は `releases/<commit>/` に保存し、CloudFront経由で候補のHTML・ヘッダー・WASM・評価関数・配布ソースを検査してからルートのindex.htmlを切り替える。候補検査が失敗した場合は公開中のページを維持する。切り替えとキャッシュ無効化の後も同じ検査を実行する。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
 
 ### ロールバック
 

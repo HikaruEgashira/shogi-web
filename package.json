@@ -8,7 +8,8 @@
     "dev": "bun scripts/serve.mjs",
     "engine": "bash scripts/build-engine.sh",
     "build": "bun scripts/build.mjs",
-    "test": "bun test"
+    "test": "bun test",
+    "check": "bun test && bun run build"
   },
   "engines": { "bun": ">=1.4.0" }
 }

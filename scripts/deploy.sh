@@ -12,6 +12,8 @@ for file in nn.bin progress.bin yaneuraou.wasm; do
   if [[ "$file" == *.wasm ]]; then content_type=application/wasm; fi
   aws s3 cp ".cache/publish/${file}.gz" "s3://${SITE_BUCKET}/releases/${GITHUB_SHA}/engine/${file}" --content-type "$content_type" --content-encoding gzip --cache-control 'public,max-age=31536000,immutable' --only-show-errors
 done
+# Verify the candidate through CloudFront before changing the public entry page.
+bun scripts/smoke.mjs "${SITE_URL%/}/releases/${GITHUB_SHA}/index.html" "$GITHUB_SHA"
 for file in licenses.html version.json index.html; do
   aws s3 cp "dist/${file}" "s3://${SITE_BUCKET}/${file}" --cache-control 'no-cache,max-age=0,must-revalidate' --only-show-errors
 done
