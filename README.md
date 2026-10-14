@@ -6,13 +6,21 @@ https://shogi.egahika.dev/
 
 ## 開発
 
-Bun 1.4以上、Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl が必要。
+Bun 1.4以上が必要。
+
+```sh
+bun run engine:fetch
+bun run check
+bun run dev
+```
+
+`engine:fetch` は公開サイトの `version.json` から現行リリースを特定し、そのリリースが公開する `source/`（manifest・patch・build script）がローカルのビルド入力と一致する場合だけWASMと評価関数を `public/` へ取得する。評価関数はmanifestのSHA-256で、WASMはコンパイル可否で検証し、全て検証してから書き込む。入力が異なれば失敗するので、その場合は次の手順でビルドする。
+
+エンジンのビルドには Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl が必要。
 
 ```sh
 source /path/to/emsdk/emsdk_env.sh
 bun run engine
-bun run check
-bun run dev
 ```
 
 `http://127.0.0.1:8795` を開く。開発サーバーも本番と同じ COOP/COEP/CSP を返す。`file://` やヘッダーを付けない静的サーバーでは動作しない。
@@ -36,7 +44,7 @@ bun run dev
 | `site_url` | `SITE_URL` |
 | `deploy_role_arn` | `AWS_DEPLOY_ROLE_ARN` |
 
-main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
+main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければまず `engine:fetch` で公開中のリリースから取得し、入力が変わっていて取得できない場合だけEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
 
 S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
 

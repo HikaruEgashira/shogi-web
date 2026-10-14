@@ -34,14 +34,21 @@ jobs:
             public/engine
             public/source
           key: engine-${{ runner.os }}-${{ hashFiles('engine/manifest.json', 'engine/browser.patch', 'scripts/build-engine.sh') }}
-      - name: Cache Emscripten
+      - name: Fetch the published engine when its build inputs are unchanged
+        id: fetch
         if: steps.engine.outputs.cache-hit != 'true'
+        continue-on-error: true
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://shogi.egahika.dev/' }}
+        run: bun run engine:fetch
+      - name: Cache Emscripten
+        if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .cache/emsdk
           key: emsdk-3.1.43-${{ runner.os }}-8f685c26ee9f672081e61e22c6aa60fa972d00a9
       - name: Cache Emscripten objects
-        if: steps.engine.outputs.cache-hit != 'true'
+        if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .cache/ccache
@@ -49,7 +56,7 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
       - name: Install pinned Emscripten
-        if: steps.engine.outputs.cache-hit != 'true'
+        if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libarchive-tools ccache
@@ -62,7 +69,7 @@ jobs:
           .cache/emsdk/emsdk install 3.1.43
           .cache/emsdk/emsdk activate 3.1.43
       - name: Build pinned WASM engine
-        if: steps.engine.outputs.cache-hit != 'true'
+        if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         env:
           CCACHE_DIR: ${{ github.workspace }}/.cache/ccache
           CCACHE_BASEDIR: ${{ github.workspace }}
