@@ -12,12 +12,13 @@
   --accent: #5e6ad2;
   --accent-bright: #6e79d6;
   --accent-soft: #5e6ad22e;
-  --mark: #414bb4;
+  --mark: #8b93f8;
   --danger: #eb5757;
   --blue: var(--accent-bright);
   --red: var(--danger);
-  --wood-line: #826b48;
-  --wood-label: #6e5736;
+  --board-line: #574f3e;
+  --board-label: #b3a58a;
+  --frame: #3a342b;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -56,21 +57,21 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .hand button.selected { background: var(--accent-soft); border-color: var(--accent); }
 .hand-piece { font: 24px Georgia, "Yu Mincho", serif; }
 .count { font-size: 10px; color: var(--text-secondary); }
-.board-frame { position: relative; padding: 20px 24px 12px 12px; border-radius: 8px; background: #dfbd85; box-shadow: 0 0 0 1px #00000080, 0 4px 0 #a37c4a, 0 22px 45px -15px #000000d9; }
-.files { display: grid; grid-template-columns: repeat(9, 1fr); position: absolute; top: 4px; left: 12px; right: 24px; text-align: center; font-size: 10px; color: var(--wood-label); }
-.ranks { display: grid; grid-template-rows: repeat(9, 1fr); position: absolute; right: 7px; top: 20px; bottom: 12px; font: 10px Georgia, "Yu Mincho", serif; align-items: center; color: var(--wood-label); }
-.board { display: grid; grid-template: repeat(9, minmax(0, 1fr)) / repeat(9, minmax(0, 1fr)); aspect-ratio: 1 / 1.06; border-top: 1px solid var(--wood-line); border-left: 1px solid var(--wood-line); background: linear-gradient(90deg, #e7c893, #efd49f 30%, #e4c18b 70%, #ebcd97); }
-.square { position: relative; min-width: 0; min-height: 0; border: 0; border-right: 1px solid var(--wood-line); border-bottom: 1px solid var(--wood-line); border-radius: 0; background: transparent; padding: 0; display: grid; place-items: center; }
-.square:hover:not(:disabled) { background: #ffffff24; }
+.board-frame { position: relative; padding: 20px 24px 12px 12px; border-radius: 8px; background: var(--frame); box-shadow: 0 0 0 1px #000000a6, 0 4px 0 #1b1814, 0 22px 45px -15px #000000d9; }
+.files { display: grid; grid-template-columns: repeat(9, 1fr); position: absolute; top: 4px; left: 12px; right: 24px; text-align: center; font-size: 10px; color: var(--board-label); }
+.ranks { display: grid; grid-template-rows: repeat(9, 1fr); position: absolute; right: 7px; top: 20px; bottom: 12px; font: 10px Georgia, "Yu Mincho", serif; align-items: center; color: var(--board-label); }
+.board { display: grid; grid-template: repeat(9, minmax(0, 1fr)) / repeat(9, minmax(0, 1fr)); aspect-ratio: 1 / 1.06; border-top: 1px solid var(--board-line); border-left: 1px solid var(--board-line); background: linear-gradient(90deg, #35302a, #3b352d 30%, #312c25 70%, #38322b); }
+.square { position: relative; min-width: 0; min-height: 0; border: 0; border-right: 1px solid var(--board-line); border-bottom: 1px solid var(--board-line); border-radius: 0; background: transparent; padding: 0; display: grid; place-items: center; }
+.square:hover:not(:disabled) { background: #ffffff12; }
 .square:disabled { opacity: 1; }
-.square.last { background: #5e6ad236; }
-.square.last-from { background: #5e6ad21f; }
+.square.last { background: #5e6ad23d; }
+.square.last-from { background: #5e6ad221; }
 .square.selected { background: #5e6ad266 !important; }
-.square.legal::after { content: ""; position: absolute; width: 11px; height: 11px; border-radius: 50%; background: var(--mark); z-index: 2; box-shadow: 0 0 0 3px #ffffff70; }
+.square.legal::after { content: ""; position: absolute; width: 11px; height: 11px; border-radius: 50%; background: var(--mark); z-index: 2; box-shadow: 0 0 0 3px #00000059; }
 .square.legal:has(.piece)::after { width: 82%; height: 88%; border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 3px var(--mark); }
-.square.in-check { background: #eb575759; }
+.square.in-check { background: #eb57574d; }
 .square:focus-visible { z-index: 3; outline-offset: -3px; }
-.piece { display: grid; place-items: center; width: 80%; height: 87%; padding-top: 7%; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: clamp(18px, 3.7svh, 34px); font-weight: 700; line-height: 1; clip-path: polygon(50% 0, 87% 17%, 100% 100%, 0 100%, 13% 17%); background: linear-gradient(110deg, #fae8be, #efd09a); color: #30271c; filter: drop-shadow(0 1px 1px #795e39); user-select: none; }
+.piece { display: grid; place-items: center; width: 80%; height: 87%; padding-top: 7%; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: clamp(18px, 3.7svh, 34px); font-weight: 700; line-height: 1; clip-path: polygon(50% 0, 87% 17%, 100% 100%, 0 100%, 13% 17%); background: linear-gradient(110deg, #fae8be, #efd09a); color: #30271c; filter: drop-shadow(0 1px 2px #000000a6); user-select: none; }
 .piece.reverse { transform: rotate(180deg); }
 .piece.promoted { color: var(--red); }
 .piece.letters { font-family: Georgia, serif; font-weight: 600; font-size: clamp(17px, 3.3svh, 30px); }
