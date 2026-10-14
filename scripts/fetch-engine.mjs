@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { engineInputs } from './engine-inputs.mjs';
 // The published site is the authoritative artifact store: fetch the engine instead of building it
 // whenever the published build inputs equal the local ones.
 const site = process.argv[2] || process.env.SITE_URL || 'https://shogi.egahika.dev/';
-const inputs = { 'manifest.json': 'engine/manifest.json', 'browser.patch': 'engine/browser.patch', 'build-engine.sh': 'scripts/build-engine.sh' };
 const files = {
   engine: ['yaneuraou.js', 'yaneuraou.worker.js', 'yaneuraou.wasm', 'nn.bin', 'progress.bin', 'eval_options.txt', 'tag.json'],
   source: ['yaneuraou.tar.gz', 'browser.patch', 'build-engine.sh', 'manifest.json', 'GPL-3.0.txt'],
@@ -17,7 +17,7 @@ const manifest = JSON.parse(await readFile('engine/manifest.json', 'utf8'));
 const { commit } = JSON.parse(await get('version.json'));
 if (!/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid published commit');
 const release = `releases/${commit}/`;
-for (const [name, local] of Object.entries(inputs)) {
+for (const [name, local] of Object.entries(engineInputs)) {
   if (!(await get(`${release}source/${name}`)).equals(await readFile(local))) throw Error(`${local} differs from the published build ${commit.slice(0, 7)}; run \`bun run engine\``);
 }
 const fetched = [];
