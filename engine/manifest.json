@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/yaneurao/YaneuraOu.git",
+  "commit": "c1b80eaa09fe13d5f12b1599d1ae4d53c224de30",
+  "emscripten": "3.1.43",
+  "architecture": "SFNN_ka2_2048_8_64_progress8",
+  "evaluation": "https://storage.yaneu.com/yaneuraou/TuyouraOu11micro-SFNN_ka2_2048_8_64_progress8-epoch0010-20261001.7z",
+  "archiveSha256": "d1326e9a620c30d40ae553259dd0b6828d2f4e9fca3b6ab9440566579ab0e8c2",
+  "nnSha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
+  "progressSha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1",
+  "fvScale": 24,
+  "article": "https://yaneurao.fanbox.cc/posts/12761272"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "shogi-web",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "engine": "bash scripts/build-engine.sh",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

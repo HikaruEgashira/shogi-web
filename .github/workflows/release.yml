@@ -1,0 +1,57 @@
+name: Test and deploy
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Install pinned Emscripten
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libarchive-tools
+          git init .cache/emsdk
+          git -C .cache/emsdk remote add origin https://github.com/emscripten-core/emsdk.git
+          git -C .cache/emsdk fetch --depth 1 origin 8f685c26ee9f672081e61e22c6aa60fa972d00a9
+          git -C .cache/emsdk checkout --detach FETCH_HEAD
+          .cache/emsdk/emsdk install 3.1.43
+          .cache/emsdk/emsdk activate 3.1.43
+      - name: Build and test real WASM
+        run: |
+          source .cache/emsdk/emsdk_env.sh
+          npm run engine
+          npm test
+          npm run build
+      - name: Authenticate with AWS OIDC
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+      - name: Publish and verify
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+        env:
+          SITE_BUCKET: ${{ vars.SITE_BUCKET }}
+          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: bash scripts/deploy.sh

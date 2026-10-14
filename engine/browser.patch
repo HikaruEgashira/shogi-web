@@ -1,0 +1,72 @@
+diff --git a/source/Makefile b/source/Makefile
+index e862b78..500fb1e 100644
+--- a/source/Makefile
++++ b/source/Makefile
+@@ -243,11 +243,11 @@ else
+ 		LDFLAGS += --pre-js wasm_pre.js
+ 		# LDFLAGS += --preload-file eval/nn.bin
+ 		LDFLAGS += -s MODULARIZE=1 -s EXPORT_NAME="$(EM_EXPORT_NAME)" -s ENVIRONMENT=web,worker,node
+-		LDFLAGS += -s PTHREAD_POOL_SIZE=32
++		LDFLAGS += -s PTHREAD_POOL_SIZE=2
+ 		# -s PTHREAD_POOL_SIZE_STRICT=32
+ 		LDFLAGS += -s FILESYSTEM=1 -s EXIT_RUNTIME=0 -s "EXPORTED_RUNTIME_METHODS=['FS','ccall']"
+-		LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=$(EM_INITIAL_MEMORY_SIZE) -s MAXIMUM_MEMORY=4294967296
+-		LDFLAGS += -s STACK_SIZE=67108864
++		LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=$(EM_INITIAL_MEMORY_SIZE) -s MAXIMUM_MEMORY=536870912
++		LDFLAGS += -s STACK_SIZE=8388608
+ 		# LDFLAGS += -s PROXY_TO_PTHREAD
+ 		# LDFLAGS += -s ALLOW_UNIMPLEMENTED_SYSCALLS
+ 		# LDFLAGS += -s ASSERTIONS
+diff --git a/source/eval/nnue/evaluate_nnue.cpp b/source/eval/nnue/evaluate_nnue.cpp
+index 1af65ed..c16f9f2 100644
+--- a/source/eval/nnue/evaluate_nnue.cpp
++++ b/source/eval/nnue/evaluate_nnue.cpp
+@@ -1,4 +1,4 @@
+-﻿// NNUE評価関数の計算に関するコード
++// NNUE評価関数の計算に関するコード
+ 
+ #include "../../config.h"
+ 
+@@ -373,8 +373,12 @@ namespace {
+ 		}
+ #if defined(SFNNwoPSQT) && NNUE_SFNN_PROGRESS_BUCKETS != 1
+ 		const std::string eval_dir = Options["EvalDir"];
++#if defined(__EMSCRIPTEN__)
++        const auto progress_path = Path::Combine(eval_dir, "progress.bin");
++#else
+ 		const auto progress_path = Path::Combine(
+ 		    Path::Combine(Directory::GetBinaryFolder(), eval_dir), "progress.bin");
++#endif
+ 		std::ifstream progress_stream(progress_path, std::ios::binary);
+ 		sync_cout << "info string loading progress file : " << progress_path << sync_endl;
+ 		result = progress_stream.is_open()
+diff --git a/source/usi.cpp b/source/usi.cpp
+index 3bf539a..398255e 100644
+--- a/source/usi.cpp
++++ b/source/usi.cpp
+@@ -1,4 +1,4 @@
+-﻿#include <cstdlib>
++#include <cstdlib>
+ #include <sstream>
+ #include <queue>
+ 
+@@ -345,6 +345,19 @@ bool USIEngine::usi_cmdexec(const std::string& cmd) {
+     else if (token == "d")
+         sync_cout << engine.visualize() << sync_endl;
+ 
++#if defined(__EMSCRIPTEN__)
++    // Keep browser rules identical to the search engine, including repetition.
++    else if (token == "webstate") {
++        auto& pos = engine.get_position();
++        sync_cout << "webstate " << pos.sfen() << "|" << int(pos.in_check())
++                  << "|" << int(pos.is_repetition(0))
++                  << "|" << int(pos.DeclarationWin() != Move::none()) << "|";
++        for (auto m : MoveList<LEGAL_ALL>(pos))
++            std::cout << m << ' ';
++        std::cout << sync_endl;
++    }
++#endif
++
+     // 現在の局面の評価値を表示する。
+     else if (token == "eval")
+         engine.trace_eval();

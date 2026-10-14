@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#23364b">
+  <meta name="description" content="つようら王11microとブラウザで一局。登録不要。思考も棋譜も、あなたの端末の中で。">
+  <title>ひと局 — ブラウザ将棋</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="./" aria-label="ひと局 ホーム"><span class="brand-piece" aria-hidden="true">歩</span>ひと局<span class="brand-caption">ブラウザ将棋</span></a>
+    <span class="privacy">登録不要・棋譜は端末内に保存</span>
+  </header>
+  <main>
+    <section class="play-area" aria-label="対局">
+      <div class="player opponent"><span class="avatar" aria-hidden="true">王</span><div><h1>つようら王<span>11micro</span></h1><p id="opponent-side">後手</p></div><span class="player-tag">対局相手</span></div>
+      <div id="opponent-hand" class="hand" aria-label="相手の持ち駒"></div>
+      <div class="board-frame"><div id="files" class="files" aria-hidden="true"></div><div id="board" class="board" role="group" aria-label="将棋盤"></div><div id="ranks" class="ranks" aria-hidden="true"></div></div>
+      <div id="human-hand" class="hand" aria-label="あなたの持ち駒"></div>
+      <div class="player human"><span class="avatar" aria-hidden="true">玉</span><div><h2>あなた</h2><p id="human-side">先手</p></div><span id="turn-tag" class="player-tag">準備中</span></div>
+      <p class="board-help">駒を選び、移動先を選んで指します。持ち駒も同じ操作で打てます。</p>
+    </section>
+    <aside class="sidebar">
+      <section class="status-panel"><div class="status-kicker"><span id="status-dot"></span><span id="phase">対局の準備</span></div><h2 id="status" role="status" aria-live="polite">一局、指しませんか。</h2><p id="detail">つようら王11microがお相手します。</p></section>
+      <section class="setup" aria-label="対局設定">
+        <div class="field"><label for="side">あなたの手番</label><select id="side"><option value="b">先手（先に指す）</option><option value="w">後手（あとに指す）</option></select></div>
+        <div class="field"><label for="time">相手の思考時間</label><select id="time"><option value="300">さくさく · 0.3秒</option><option value="1500" selected>標準 · 1.5秒</option><option value="5000">じっくり · 5秒</option></select></div>
+        <button id="start" class="primary">対局を始める</button>
+        <button id="resume" class="secondary" hidden>前の対局を再開</button>
+        <p class="download-note">初回はエンジンと評価関数を読み込みます。<br>対局中の通信はありません。</p>
+        <div class="game-actions"><button id="undo" disabled>待った</button><button id="resign" disabled>投了</button><button id="declare" hidden>入玉宣言</button></div>
+      </section>
+      <section class="record" aria-labelledby="record-title"><div class="section-heading"><h2 id="record-title">棋譜</h2><span id="move-count">0 手</span></div><ol id="history" aria-label="指し手一覧"><li class="empty-history">最初の一手を、ここから。</li></ol><button id="export" class="text-button" disabled>棋譜を保存（USI）</button></section>
+      <details class="about"><summary>この将棋について</summary><p>やねうら王と、つようら王11microの評価関数で対局します。AIの思考はすべて端末内で行い、棋譜をサーバーへ送信しません。思考時間は棋力の段級位を表すものではありません。</p><p>平手・27点法。千日手は引き分け、連続王手の千日手は王手側の負けです。双方の合意が必要な持将棋判定には対応していません。</p><p>最新の Chrome・Edge・Firefox・Safari をご利用ください。端末の性能により思考時間が延びることがあります。</p><a href="https://yaneurao.fanbox.cc/posts/12761272" target="_blank" rel="noopener noreferrer">評価関数の公開記事</a></details>
+    </aside>
+  </main>
+  <footer><span>ひと局</span><nav aria-label="関連リンク"><a href="./licenses.html">ライセンス・ソース</a><a href="https://github.com/HikaruEgashira/shogi-web" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  <dialog id="promotion" aria-labelledby="promotion-title"><h2 id="promotion-title">成りますか？</h2><p>移動した駒を成ることができます。</p><div class="dialog-actions"><button id="promote" class="primary">成る</button><button id="unpromote" class="secondary">成らない</button></div></dialog>
+  <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button id="confirm-yes" class="primary">続ける</button><button id="confirm-no" class="secondary">戻る</button></div></dialog>
+  <noscript>対局には JavaScript を有効にしてください。</noscript>
+</body>
+</html>
