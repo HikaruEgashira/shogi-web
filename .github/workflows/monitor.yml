@@ -1,0 +1,32 @@
+name: Monitor the live site
+# A post-deploy "superfan": the deploy pipeline verifies a fresh release once,
+# this keeps watching the live release for later drift (headers, CDN, checksums).
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Verify the live release
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://shogi.egahika.dev/' }}
+        run: |
+          commit=$(bun -e 'const { commit } = await fetch(new URL("version.json", process.env.SITE_URL)).then(response => response.json()); if (!/^[a-f0-9]{40}$/.test(commit)) throw Error("Invalid published commit"); console.log(commit)')
+          bun scripts/smoke.mjs "$SITE_URL" "$commit"
