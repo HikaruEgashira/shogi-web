@@ -13,7 +13,7 @@ const page = await get('/');
 for (const [key, value] of Object.entries(headers)) assert.equal(page.headers.get(key), value, key);
 assert.ok((await page.text()).includes(`./releases/${expected}/app.mjs`));
 assert.equal((await (await get('/version.json')).json()).commit, expected);
-for (const name of ['app.mjs', 'engine-client.mjs', 'rules.mjs', 'engine-worker.js', 'style.css', 'engine/yaneuraou.js', 'engine/yaneuraou.worker.js', 'source/yaneuraou.tar.gz', 'source/browser.patch']) await get(`/releases/${expected}/${name}`);
+for (const name of ['app.mjs', 'i18n.mjs', 'engine-client.mjs', 'rules.mjs', 'engine-worker.js', 'style.css', 'engine/yaneuraou.js', 'engine/yaneuraou.worker.js', 'source/yaneuraou.tar.gz', 'source/browser.patch']) await get(`/releases/${expected}/${name}`);
 const wasm = await get(`/releases/${expected}/engine/yaneuraou.wasm`);
 assert.equal(wasm.headers.get('content-type'), 'application/wasm');
 await WebAssembly.compile(await wasm.arrayBuffer());

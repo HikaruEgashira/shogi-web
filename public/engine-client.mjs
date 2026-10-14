@@ -9,7 +9,7 @@ export class Engine {
         clearTimeout(timer); this.pending = null; resolve(data.line);
       }
     };
-    this.worker.onerror = event => this.fail(new Error(`思考エンジンを起動できませんでした。${event.message || 'ページを再読み込みしてください。'}`));
+    this.worker.onerror = () => this.fail(new Error('engineLoad'));
   }
   fail(error) {
     this.error = error;
@@ -20,7 +20,7 @@ export class Engine {
     if (this.error) return Promise.reject(this.error);
     if (this.pending) return Promise.reject(new Error('Engine request already pending'));
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => this.fail(new Error('エンジンの応答がありません。棋譜は保存されています。再読み込みして再開してください。')), timeout);
+      const timer = setTimeout(() => this.fail(new Error('engineTimeout')), timeout);
       this.pending = { matches, resolve, reject, timer };
       this.send(command);
     });
@@ -39,5 +39,5 @@ export class Engine {
     const line = await this.request(`go movetime ${time}`, line => line?.startsWith('bestmove '), time + 30000);
     return line.split(' ')[1];
   }
-  close() { this.fail(new Error('対局を終了しました。')); this.worker.terminate(); }
+  close() { this.fail(new Error('engineError')); this.worker.terminate(); }
 }

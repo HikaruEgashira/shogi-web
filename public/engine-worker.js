@@ -6,13 +6,13 @@ self.onmessage = ({ data }) => engine ? engine.postMessage(data.command) : comma
 async function start() {
   const files = await Promise.all(['nn.bin', 'progress.bin'].map(async name => {
     const response = await fetch(`./engine/${name}`);
-    if (!response.ok) throw Error(`評価関数を取得できませんでした (${response.status})`);
+    if (!response.ok) throw Error('engineLoad');
     return [name, new Uint8Array(await response.arrayBuffer())];
   }));
   engine = await YaneuraOu({
     mainScriptUrlOrBlob: new URL('./engine/yaneuraou.js', self.location.href).href,
     locateFile: name => new URL(`./engine/${name}`, self.location.href).href,
-    onAbort: () => self.postMessage({ error: 'エンジンが停止しました。再読み込みして再開してください。' }),
+    onAbort: () => self.postMessage({ error: 'engineError' }),
   });
   engine.addMessageListener(line => self.postMessage({ line }));
   engine.FS.mkdir('/eval');

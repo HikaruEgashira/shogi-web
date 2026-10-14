@@ -38,10 +38,11 @@ export function parseState(line) {
   return { ...parseSfen(sfen), sfen, check: check === '1', repetition: Number(repetition), declaration: declaration === '1', legal };
 }
 
-export function moveLabel(move, state) {
+export function moveLabel(move, state, language = 'ja') {
   const target = move.slice(2, 4);
   const drop = move[1] === '*';
   const piece = drop ? move[0] : state.board.get(move.slice(0, 2))?.type;
+  if (language === 'en') return `${state.turn === 'b' ? '☗' : '☖'} ${drop ? move : `${piece} ${move.slice(0, 2)}–${target}${move.endsWith('+') ? '+' : ''}`}`;
   return `${state.turn === 'b' ? '☗' : '☖'} ${target[0]}${RANKS['abcdefghi'.indexOf(target[1])]}${PIECES[piece] || ''}${drop ? '打' : move.endsWith('+') ? '成' : ''}`;
 }
 
@@ -49,6 +50,7 @@ export function readSaved(text) {
   try {
     const data = JSON.parse(text);
     if (data.version !== 1 || !['b', 'w'].includes(data.human) || ![300, 1500, 5000].includes(data.time) || !Array.isArray(data.moves) || data.moves.length > 1024 || data.moves.some(move => typeof move !== 'string' || !MOVE.test(move))) return null;
-    return { version: 1, human: data.human, time: data.time, moves: data.moves, resigned: data.resigned === true };
+    const result = ['resigned', 'draw', 'perpetualWin', 'perpetualLose', 'mateWin', 'mateLose', 'engineResigned', 'declarationWin', 'declarationLose'].includes(data.result) ? data.result : '';
+    return { version: 1, human: data.human, time: data.time, moves: data.moves, resigned: data.resigned === true, result };
   } catch { return null; }
 }
