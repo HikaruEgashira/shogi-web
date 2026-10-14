@@ -9,14 +9,23 @@ let human = 'b', moves = [], labels = [], selected = null, engine = null;
 let busy = false, started = false, result = '', resigned = false, thinkingTime = 1500;
 let saved = null, promotionMoves = [], confirmAction;
 let language = navigator.language.startsWith('ja') ? 'ja' : 'en';
-let notation;
+let notation, theme = 'system';
 try {
   const preferred = localStorage.getItem('shogi-language');
   if (['ja', 'en'].includes(preferred)) language = preferred;
   notation = localStorage.getItem('shogi-pieces');
+  const preferredTheme = localStorage.getItem('shogi-theme');
+  if (['system', 'light', 'dark'].includes(preferredTheme)) theme = preferredTheme;
 } catch { /* Preferences are optional when storage is unavailable. */ }
 if (!['letters', 'kanji'].includes(notation)) notation = language === 'ja' ? 'kanji' : 'letters';
 const tr = (key, values) => translate(language, key, values);
+const THEME_COLORS = { light: '#fcfcfd', dark: '#08090a' };
+function applyTheme() {
+  document.documentElement.dataset.theme = theme;
+  const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : theme;
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', THEME_COLORS[resolved]);
+}
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (theme === 'system') applyTheme(); });
 let statusKeys = ['before', 'chooseSettings', 'setup'];
 function translatePage() {
   document.documentElement.lang = language;
@@ -24,7 +33,7 @@ function translatePage() {
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-label]')) { el.setAttribute('aria-label', tr(el.dataset.i18nLabel)); el.title = tr(el.dataset.i18nLabel); }
   for (const [id, key] of [['board', 'board'], ['opponent-hand', 'opponentHand'], ['human-hand', 'yourHand'], ['history', 'record']]) $(id).setAttribute('aria-label', tr(key));
-  $('language').value = language; $('notation').value = notation;
+  $('language').value = language; $('notation').value = notation; $('theme').value = theme;
   status(...statusKeys);
 }
 function label(move) { return { ja: moveLabel(move, state, 'ja'), en: moveLabel(move, state, 'en') }; }
@@ -247,4 +256,10 @@ $('notation').onchange = () => {
   try { localStorage.setItem('shogi-pieces', notation); } catch { /* Optional preference. */ }
   render();
 };
+$('theme').onchange = () => {
+  theme = $('theme').value;
+  try { localStorage.setItem('shogi-theme', theme); } catch { /* Optional preference. */ }
+  applyTheme();
+};
+applyTheme();
 translatePage(); render();

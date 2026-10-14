@@ -1,6 +1,6 @@
 export const messages = {
   en: {
-    title: 'Shogi', close: 'Close', language: 'Language', pieces: 'Piece notation', kanji: 'Kanji', letters: 'Letters',
+    title: 'Shogi', close: 'Close', language: 'Language', theme: 'Theme', system: 'System', light: 'Light', dark: 'Dark', pieces: 'Piece notation', kanji: 'Kanji', letters: 'Letters',
     you: 'You', sente: 'First', gote: 'Second',
     board: 'Shogi board', opponentHand: "Opponent's pieces in hand", yourHand: 'Your pieces in hand', noHand: 'No pieces in hand',
     help: 'Select a piece, then its destination. Select a piece in hand to drop it.',
@@ -35,7 +35,7 @@ export const messages = {
     pieceGuide: 'K King · R Rook · B Bishop · G Gold · S Silver · N Knight · L Lance · P Pawn · + Promoted',
   },
   ja: {
-    title: '将棋', close: '閉じる', language: '言語', pieces: '駒の表記', kanji: '漢字', letters: 'アルファベット',
+    title: '将棋', close: '閉じる', language: '言語', theme: 'テーマ', system: '端末に合わせる', light: 'ライト', dark: 'ダーク', pieces: '駒の表記', kanji: '漢字', letters: 'アルファベット',
     you: 'あなた', sente: '先手', gote: '後手',
     board: '将棋盤', opponentHand: '相手の持ち駒', yourHand: 'あなたの持ち駒', noHand: '持ち駒なし',
     help: '駒を選び、移動先を選んで指します。持ち駒も同じ操作で打てます。',
