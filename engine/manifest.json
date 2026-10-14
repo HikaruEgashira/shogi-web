@@ -7,6 +7,7 @@
   "archiveSha256": "d1326e9a620c30d40ae553259dd0b6828d2f4e9fca3b6ab9440566579ab0e8c2",
   "nnSha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
   "progressSha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1",
+  "wasmSha256": "bce60e7695f231b670f290ef4aab15d8d4c6aa9dc1629533c19098d5aa508080",
   "fvScale": 24,
   "article": "https://yaneurao.fanbox.cc/posts/12761272"
 }

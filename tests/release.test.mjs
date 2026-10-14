@@ -24,7 +24,7 @@ test('built release works at its candidate URL and after promotion; wrong versio
     } catch { response.writeHead(404).end(); }
   });
   try {
-    await cp(join(repo, 'public'), join(root, 'public'), { recursive: true });
+    for (const path of ['public', 'engine', 'scripts/build-engine.sh']) await cp(join(repo, path), join(root, path), { recursive: true });
     await run(process.execPath, [join(repo, 'scripts/build.mjs')], { cwd: root, env: { ...process.env, GITHUB_SHA: commit } });
     const release = join(root, 'releases', commit);
     await mkdir(join(root, 'releases'));
@@ -46,6 +46,7 @@ test('built release works at its candidate URL and after promotion; wrong versio
     await smoke(candidate);
     for (const file of ['index.html', 'licenses.html', 'version.json']) await cp(join(release, file), join(root, file));
     await smoke(origin);
+    await run(process.execPath, [join(repo, 'scripts/smoke.mjs'), origin]);
     await writeFile(join(release, 'version.json'), JSON.stringify({ commit: 'b'.repeat(40) }));
     await assert.rejects(smoke(candidate));
   } finally {
@@ -53,6 +54,21 @@ test('built release works at its candidate URL and after promotion; wrong versio
     server.close();
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('build refuses a WASM or shipped source that does not match the pinned inputs', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'shogi-build-'));
+  try {
+    await cp(join(repo, 'public'), join(root, 'public'), { recursive: true });
+    for (const path of ['engine', 'scripts/build-engine.sh']) await cp(join(repo, path), join(root, path), { recursive: true });
+    const build = () => run(process.execPath, [join(repo, 'scripts/build.mjs')], { cwd: root });
+    await build();
+    await writeFile(join(root, 'engine/browser.patch'), 'changed');
+    await assert.rejects(build(), /browser\.patch differs/);
+    await cp(join(repo, 'engine/browser.patch'), join(root, 'engine/browser.patch'));
+    await writeFile(join(root, 'public/engine/yaneuraou.wasm'), 'changed');
+    await assert.rejects(build(), /yaneuraou\.wasm: checksum mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('deployment verifies before switching pages and never promotes a failed candidate', async () => {

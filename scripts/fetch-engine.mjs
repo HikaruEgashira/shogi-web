@@ -23,10 +23,9 @@ for (const [name, local] of Object.entries(inputs)) {
 const fetched = [];
 for (const [directory, names] of Object.entries(files)) for (const name of names) fetched.push([`public/${directory}/${name}`, await get(`${release}${directory}/${name}`)]);
 const bytes = Object.fromEntries(fetched);
-for (const [name, expected] of [['nn.bin', manifest.nnSha256], ['progress.bin', manifest.progressSha256]]) {
+for (const [name, expected] of [['nn.bin', manifest.nnSha256], ['progress.bin', manifest.progressSha256], ['yaneuraou.wasm', manifest.wasmSha256]]) {
   if (createHash('sha256').update(bytes[`public/engine/${name}`]).digest('hex') !== expected) throw Error(`${name}: checksum mismatch`);
 }
-await WebAssembly.compile(bytes['public/engine/yaneuraou.wasm']);
 // Write only after every file is verified so a failure never leaves a half-fetched engine.
 for (const directory of Object.keys(files)) await mkdir(`public/${directory}`, { recursive: true });
 for (const [path, content] of fetched) await writeFile(path, content);

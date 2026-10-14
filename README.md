@@ -14,7 +14,7 @@ bun run check
 bun run dev
 ```
 
-`engine:fetch` は公開サイトの `version.json` から現行リリースを特定し、そのリリースが公開する `source/`（manifest・patch・build script）がローカルのビルド入力と一致する場合だけWASMと評価関数を `public/` へ取得する。評価関数はmanifestのSHA-256で、WASMはコンパイル可否で検証し、全て検証してから書き込む。入力が異なれば失敗するので、その場合は次の手順でビルドする。
+`engine:fetch` は公開サイトの `version.json` から現行リリースを特定し、そのリリースが公開する `source/`（manifest・patch・build script）がローカルのビルド入力と一致する場合だけWASMと評価関数を `public/` へ取得する。評価関数とWASMをmanifestのSHA-256で検証し、全て検証してから書き込む。入力が異なれば失敗するので、その場合は次の手順でビルドする。
 
 エンジンのビルドには Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl が必要。
 
@@ -25,7 +25,7 @@ bun run engine
 
 `http://127.0.0.1:8795` を開く。開発サーバーも本番と同じ COOP/COEP/CSP を返す。`file://` やヘッダーを付けない静的サーバーでは動作しない。
 
-`engine/manifest.json` にソースのコミット、評価関数URL、SHA-256、アーキテクチャを固定。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
+`engine/manifest.json` にソースのコミット、評価関数URL、評価関数とWASMのSHA-256、アーキテクチャを固定。`bun run build` はこれらのハッシュと、`public/source/` の配布ソースがビルド入力（manifest・patch・build script）と一致することを検査する。エンジンの入力を変えたら再ビルド後に `wasmSha256` を更新する。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
 
 `bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
 
@@ -50,7 +50,7 @@ S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASM�
 
 `shogi.egahika.dev` の証明書はモジュール内のACM（us-east-1）、DNSは **HikaruEgashira/egahika.dev** で管理する。CloudFrontへのCNAMEとACM検証用CNAMEはDNS-onlyで保持する。初回は証明書だけを適用し、`certificate_validation_records` のCNAMEをDNS側へ反映してから全体を適用する。検証用CNAMEは証明書の自動更新にも必要。
 
-配信物は `releases/<commit>/` に保存し、CloudFront経由で候補のHTML・ヘッダー・WASM・評価関数・配布ソースを検査してからルートのindex.htmlを切り替える。候補検査が失敗した場合は公開中のページを維持する。切り替えとキャッシュ無効化の後も同じ検査を実行する。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
+配信物は `releases/<commit>/` に保存し、CloudFront経由で候補のHTML・ヘッダー・WASM・評価関数・配布ソースを検査してからルートのindex.htmlを切り替える。候補検査が失敗した場合は公開中のページを維持する。切り替えとキャッシュ無効化の後も同じ検査を実行する。`Watch production` が6時間ごとに公開中のページへ同じ検査を行い、配信物の破損や改竄をCIの失敗として検出する。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
 
 ### ロールバック
 
