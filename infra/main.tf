@@ -170,7 +170,8 @@ resource "aws_iam_role" "deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:HikaruEgashira/shogi-web:ref:refs/heads/main"
+          # Immutable subjects bind trust to repository identity, not just its name.
+          "token.actions.githubusercontent.com:sub" = "repo:HikaruEgashira@39324739/shogi-web@1419147100:ref:refs/heads/main"
         }
       }
     }]
