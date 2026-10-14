@@ -1,5 +1,7 @@
 # Shogi
 
+https://shogi.egahika.dev/
+
 [つようら王11micro](https://yaneurao.fanbox.cc/posts/12761272) と対局する、ブラウザ内で完結する将棋アプリ。やねうら王のWASMが探索・合法手・千日手・27点法の入玉宣言を処理する。JavaScriptは盤面の表示と対局の進行を担う。実行時の外部依存、APIサーバー、計測サービスはない。
 
 ## 開発
@@ -35,7 +37,9 @@ npm run dev
 
 main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
 
-S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、専用ドメイン・WAF・実行サーバーの固定費を増やさない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
+S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
+
+`shogi.egahika.dev` の証明書はモジュール内のACM（us-east-1）、DNSは **HikaruEgashira/egahika.dev** で管理する。CloudFrontへのCNAMEとACM検証用CNAMEはDNS-onlyで保持する。初回は証明書だけを適用し、`certificate_validation_records` のCNAMEをDNS側へ反映してから全体を適用する。検証用CNAMEは証明書の自動更新にも必要。
 
 配信物は `releases/<commit>/` に保存し、最後にルートのindex.htmlを切り替える。バージョン管理を有効にし、非現行オブジェクト版は30日保存する。リリースディレクトリは公開中の古いタブを壊さないため自動削除しない。リリース数に比例して保存容量は増える。
 

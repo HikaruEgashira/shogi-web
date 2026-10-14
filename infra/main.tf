@@ -8,7 +8,22 @@ terraform {
 data "aws_caller_identity" "current" {}
 
 locals {
-  name = "shogi-web"
+  name        = "shogi-web"
+  domain_name = "shogi.egahika.dev"
+}
+
+resource "aws_acm_certificate" "site" {
+  region            = "us-east-1"
+  domain_name       = local.domain_name
+  validation_method = "DNS"
+  lifecycle { create_before_destroy = true }
+}
+
+# DNS records are managed in HikaruEgashira/egahika.dev.
+resource "aws_acm_certificate_validation" "site" {
+  region                  = "us-east-1"
+  certificate_arn         = aws_acm_certificate.site.arn
+  validation_record_fqdns = [for record in aws_acm_certificate.site.domain_validation_options : record.resource_record_name]
 }
 
 resource "aws_s3_bucket" "site" {
@@ -101,6 +116,7 @@ resource "aws_cloudfront_response_headers_policy" "site" {
 
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
+  aliases             = [local.domain_name]
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   comment             = "Browser-only shogi / HikaruEgashira/shogi-web"
@@ -129,7 +145,11 @@ resource "aws_cloudfront_distribution" "site" {
   restrictions {
     geo_restriction { restriction_type = "none" }
   }
-  viewer_certificate { cloudfront_default_certificate = true }
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.site.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
 }
 
 resource "aws_s3_bucket_policy" "site" {
