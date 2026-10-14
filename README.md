@@ -6,21 +6,21 @@ https://shogi.egahika.dev/
 
 ## 開発
 
-Node.js 22以上、Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl が必要。
+Bun 1.4以上、Emscripten **3.1.43**、Python 3、make、bsdtar、git、curl が必要。
 
 ```sh
 source /path/to/emsdk/emsdk_env.sh
-npm run engine
-npm test
-npm run build
-npm run dev
+bun run engine
+bun test
+bun run build
+bun run dev
 ```
 
 `http://127.0.0.1:8795` を開く。開発サーバーも本番と同じ COOP/COEP/CSP を返す。`file://` やヘッダーを付けない静的サーバーでは動作しない。
 
 `engine/manifest.json` にソースのコミット、評価関数URL、SHA-256、アーキテクチャを固定。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
 
-`npm test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
+`bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
 
 ## 配備
 
@@ -35,7 +35,7 @@ npm run dev
 | `site_url` | `SITE_URL` |
 | `deploy_role_arn` | `AWS_DEPLOY_ROLE_ARN` |
 
-main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
+main pushで、固定版WASMのビルド・テスト・S3配信・本番のヘッダーと評価関数チェックサム確認を実行する。エンジンのビルド成果物とEmscripten SDKはキャッシュし、入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）が変わったときだけ再ビルドする。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
 
 S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
 
@@ -52,7 +52,7 @@ for file in licenses.html version.json index.html; do
   aws s3 cp "s3://$SITE_BUCKET/releases/$RELEASE_SHA/$file" "s3://$SITE_BUCKET/$file" --cache-control 'no-cache,max-age=0,must-revalidate'
 done
 aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json
-node scripts/smoke.mjs "$SITE_URL" "$RELEASE_SHA"
+bun scripts/smoke.mjs "$SITE_URL" "$RELEASE_SHA"
 ```
 
 ## 対応範囲

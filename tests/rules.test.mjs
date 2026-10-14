@@ -25,4 +25,6 @@ test('saved records accept only bounded USI moves and supported settings', () =>
   assert.equal(readSaved(JSON.stringify({ ...data, moves: ['7g7f\nquit'] })), null);
   assert.equal(readSaved(JSON.stringify({ ...data, moves: Array(1025).fill('7g7f') })), null);
   assert.equal(readSaved('{'), null);
+  assert.equal(readSaved(JSON.stringify({ ...data, result: 'declarationWin' })).result, 'declarationWin');
+  assert.equal(readSaved(JSON.stringify({ ...data, result: '<script>' })).result, '');
 });

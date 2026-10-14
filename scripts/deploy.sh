@@ -17,4 +17,4 @@ for file in licenses.html version.json index.html; do
 done
 invalidation=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json --query Invalidation.Id --output text)
 aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$invalidation"
-node scripts/smoke.mjs "$SITE_URL" "$GITHUB_SHA"
+bun scripts/smoke.mjs "$SITE_URL" "$GITHUB_SHA"
