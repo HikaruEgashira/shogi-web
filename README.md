@@ -23,12 +23,6 @@ bun run dev
 
 `ccache` がPATHにあれば `EM_COMPILER_WRAPPER=ccache` でオブジェクトをキャッシュし、エンジンを差分で再ビルドする。CIも `.cache/ccache` を復元するので、`make clean` 後も変更のない翻訳単位は再コンパイルしない。
 
-### ハッカソンでの反復
-
-UI変更時は既存の `public/engine/` を使い、`bun run dev` → 編集・ブラウザ確認 → `bun run check` → 小さなコミットを main に pushする。エンジンの入力を変えたときだけ `bun run engine` を実行する。レビューでは変更の目的、壊してはいけない動作、検証結果を確認する。
-
-[Anthropicの設計原則](https://www.anthropic.com/engineering/redesigning-source-control)から、必要な成果物だけの取得と、main統合後・公開前の検証を採用する。Gitは継続使用する。PRの古い検証は新しいpushで取り消し、mainの配備は途中で中断せず直列に実行する。
-
 ## 配備
 
 `infra/` は S3、CloudFront、main限定のGitHub OIDCデプロイロールを作るTerraformモジュール。stateとモジュールの呼び出しは **HikaruEgashira/iac-aws の projects/shogi-web** で管理する。モジュール参照はコミットSHAで固定する。
