@@ -21,6 +21,8 @@ bun run dev
 
 `bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。
 
+`ccache` がPATHにあれば `EM_COMPILER_WRAPPER=ccache` でオブジェクトをキャッシュし、エンジンを差分で再ビルドする。CIも `.cache/ccache` を復元するので、`make clean` 後も変更のない翻訳単位は再コンパイルしない。
+
 ### ハッカソンでの反復
 
 UI変更時は既存の `public/engine/` を使い、`bun run dev` → 編集・ブラウザ確認 → `bun run check` → 小さなコミットを main に pushする。エンジンの入力を変えたときだけ `bun run engine` を実行する。レビューでは変更の目的、壊してはいけない動作、検証結果を確認する。

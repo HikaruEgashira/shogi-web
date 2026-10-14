@@ -3,6 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 command -v em++ >/dev/null
 command -v bsdtar >/dev/null
+# Reuse unchanged object files across rebuilds when ccache is available.
+if command -v ccache >/dev/null; then export EM_COMPILER_WRAPPER=ccache; fi
 read_manifest() { bun -e "import m from './engine/manifest.json' with {type:'json'}; console.log(m[process.argv[1]])" "$1"; }
 commit=$(read_manifest commit)
 mkdir -p .cache public/engine public/source
