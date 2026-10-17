@@ -46,7 +46,7 @@ bun run engine
 
 `Test and deploy` は `build` と `promote` の2ジョブからなる。`build` は全てのpushとPRで走り、固定版WASMのビルド・テスト・ブラウザ実走を行う。mainのコミットは並列にビルドされ、それぞれ `releases/<commit>/` へ配信し、候補URLに対してヘッダー・チェックサム・配布ソースの検査（`smoke.mjs`）とブラウザ実走（`play.mjs`）をCloudFront経由で行う。入力（`engine/manifest.json`、`engine/browser.patch`、`scripts/build-engine.sh`）のハッシュで `public/engine/` と対応する配布ソースをキャッシュする。キャッシュがなければまず `engine:fetch` で公開中のリリースから取得し、入力が変わっていて取得できない場合だけEmscripten SDKを復元または導入して再ビルドする。通常のUI変更ではSDKもエンジンの作業ツリーも取得しない。初回はIaC適用後に変数を設定し、`Test and deploy` を手動実行する。長期アクセスキーは使わない。
 
-`promote` は `production` concurrency group で直列化され、公開中のコミットより古いコミットの切り替えは省略する。切り替えはバケット内で `releases/<commit>/` のエントリファイル（`index.html`、`licenses.html`、`version.json`）をルートへコピーし、CloudFrontを無効化してから公開URLに同じ検査と実走を行う。失敗した場合は直前に公開していたリリースへ戻してジョブを失敗させる。
+`promote` は `production` concurrency group で直列化され、公開中のコミットより古いコミットの切り替えは省略する。切り替えはバケット内で `releases/<commit>/` のエントリファイル（`index.html`、`licenses.html`、`version.json`）をルートへコピーし、CloudFrontの無効化を要求し、完了待ちを挟まず公開URLに同じ検査と実走を行う。エントリファイルは最小TTL 0と`no-cache`で毎回再検証する。失敗した場合は直前に公開していたリリースへ戻してジョブを失敗させる。
 
 S3は非公開、CloudFront OACのみ読み取りを許可。HTTPS必須。WASMスレッド用にCOOP/COEPを付与する。日本を含むPriceClass_200、SSE-S3、圧縮、長期キャッシュを使用し、WAF・実行サーバーを追加しない。評価関数とWASMはgzipで事前圧縮し、転送量を合計約3.1MBに抑える。料金はアカウント共通の無料枠とアクセス量に依存する。
 

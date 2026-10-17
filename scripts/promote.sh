@@ -14,8 +14,8 @@ switch() {
     if [[ "$file" == *.json ]]; then content_type=application/json; fi
     aws s3 cp "${bucket}/releases/$1/${file}" "${bucket}/${file}" --metadata-directive REPLACE --content-type "$content_type" --cache-control 'no-cache,max-age=0,must-revalidate' --only-show-errors
   done
-  invalidation=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json --query Invalidation.Id --output text)
-  aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$invalidation"
+  # min TTL 0 and no-cache revalidate the entry files; verify the served release while invalidation propagates.
+  aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json --query Invalidation.Id --output text
 }
 previous=$( (aws s3 cp "${bucket}/version.json" - 2>/dev/null || true) | sed -n 's/.*"commit":"\([a-f0-9]\{40\}\)".*/\1/p')
 switch "$release"
