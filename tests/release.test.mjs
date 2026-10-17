@@ -82,12 +82,12 @@ case "$*" in
 esac
 `, { mode: 0o755 });
   await writeFile(join(root, 'bin/bun'), '#!/bin/sh\nprintf "%s %s\\n" "$1" "$2" >> "$TEST_LOG"\nexit "$TEST_VERIFY_EXIT"\n', { mode: 0o755 });
-  return (script, args, exit) => {
+  return (script, args, exit, revision = commit) => {
     const logPath = join(root, 'commands.log');
     return { logPath, result: writeFile(logPath, '').then(() => run('bash', [join(repo, 'scripts', script), ...args], {
       cwd: root,
       env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, TEST_LOG: logPath, TEST_VERIFY_EXIT: exit,
-        SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: commit },
+        SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: revision },
     })) };
   };
 }
@@ -123,6 +123,7 @@ test('promotion switches the entry page last, verifies the public site, and rest
       else await result;
       const log = await readFile(logPath, 'utf8');
       const entry = log.indexOf(`aws s3 cp s3://test-site/releases/${commit}/index.html s3://test-site/index.html --metadata-directive REPLACE --content-type text/html --cache-control no-cache,max-age=0,must-revalidate`);
+      assert.equal(log.match(/aws s3 cp s3:\/\/test-site\/version.json -/g).length, 1);
       assert.ok(log.indexOf('aws s3 cp s3://test-site/version.json -') < entry);
       assert.ok(log.indexOf(`releases/${commit}/version.json s3://test-site/version.json --metadata-directive REPLACE --content-type application/json`) < entry);
       const invalidation = log.indexOf('aws cloudfront create-invalidation');
@@ -139,5 +140,24 @@ test('promotion switches the entry page last, verifies the public site, and rest
         assert.equal(log.match(/create-invalidation/g).length, 1);
       }
     }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a stale automatic promotion keeps the newer public release while an explicit rollback is allowed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'shogi-stale-release-'));
+  const git = args => run('git', args, { cwd: root });
+  try {
+    await git(['init']);
+    await git(['-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '--allow-empty', '-m', 'old']);
+    const old = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+    await git(['-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '--allow-empty', '-m', 'new']);
+    const current = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+    const promote = await stubs(root, current);
+    const automatic = promote('promote.sh', [old], '0', old);
+    await automatic.result;
+    assert.doesNotMatch(await readFile(automatic.logPath, 'utf8'), /aws s3 cp .*releases\/|create-invalidation|scripts\/smoke/);
+    const rollback = promote('promote.sh', [old], '0', current);
+    await rollback.result;
+    assert.match(await readFile(rollback.logPath, 'utf8'), new RegExp(`releases/${old}/index.html`));
   } finally { await rm(root, { recursive: true, force: true }); }
 });

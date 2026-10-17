@@ -124,17 +124,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-northeast-1
-      - name: Keep a newer commit that is already public
-        id: published
-        env:
-          SITE_BUCKET: ${{ vars.SITE_BUCKET }}
-        run: |
-          current=$( (aws s3 cp "s3://${SITE_BUCKET}/version.json" - 2>/dev/null || true) | sed -n 's/.*"commit":"\([a-f0-9]\{40\}\)".*/\1/p')
-          if [ "$current" != "$GITHUB_SHA" ] && git cat-file -e "$current" 2>/dev/null && git merge-base --is-ancestor "$GITHUB_SHA" "$current"; then
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Switch the public page, verify it, and restore the previous release on failure
-        if: steps.published.outputs.superseded != 'true'
         env:
           SITE_BUCKET: ${{ vars.SITE_BUCKET }}
           DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
