@@ -82,12 +82,12 @@ case "$*" in
 esac
 `, { mode: 0o755 });
   await writeFile(join(root, 'bin/bun'), '#!/bin/sh\nprintf "%s %s\\n" "$1" "$2" >> "$TEST_LOG"\nexit "$TEST_VERIFY_EXIT"\n', { mode: 0o755 });
-  return (script, args, exit, revision = commit) => {
+  return (script, args, exit, keepNewer = 'true') => {
     const logPath = join(root, 'commands.log');
     return { logPath, result: writeFile(logPath, '').then(() => run('bash', [join(repo, 'scripts', script), ...args], {
       cwd: root,
       env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, TEST_LOG: logPath, TEST_VERIFY_EXIT: exit,
-        SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: revision },
+        SITE_BUCKET: 'test-site', DISTRIBUTION_ID: 'test-distribution', SITE_URL: 'https://example.test/', GITHUB_SHA: commit, KEEP_NEWER_RELEASE: keepNewer },
     })) };
   };
 }
@@ -153,10 +153,10 @@ test('a stale automatic promotion keeps the newer public release while an explic
     await git(['-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '--allow-empty', '-m', 'new']);
     const current = (await git(['rev-parse', 'HEAD'])).stdout.trim();
     const promote = await stubs(root, current);
-    const automatic = promote('promote.sh', [old], '0', old);
+    const automatic = promote('promote.sh', [old], '0');
     await automatic.result;
     assert.doesNotMatch(await readFile(automatic.logPath, 'utf8'), /aws s3 cp .*releases\/|create-invalidation|scripts\/smoke/);
-    const rollback = promote('promote.sh', [old], '0', current);
+    const rollback = promote('promote.sh', [old], '0', 'false');
     await rollback.result;
     assert.match(await readFile(rollback.logPath, 'utf8'), new RegExp(`releases/${old}/index.html`));
   } finally { await rm(root, { recursive: true, force: true }); }

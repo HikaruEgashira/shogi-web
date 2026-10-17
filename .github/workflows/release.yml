@@ -126,6 +126,7 @@ jobs:
           aws-region: ap-northeast-1
       - name: Switch the public page, verify it, and restore the previous release on failure
         env:
+          KEEP_NEWER_RELEASE: 'true'
           SITE_BUCKET: ${{ vars.SITE_BUCKET }}
           DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
           SITE_URL: ${{ vars.SITE_URL }}

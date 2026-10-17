@@ -18,7 +18,7 @@ switch() {
   aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths / /index.html /licenses.html /version.json --query Invalidation.Id --output text
 }
 previous=$( (aws s3 cp "${bucket}/version.json" - 2>/dev/null || true) | sed -n 's/.*"commit":"\([a-f0-9]\{40\}\)".*/\1/p')
-if [[ "$release" == "${GITHUB_SHA:-}" && "$previous" != "$release" ]] && git cat-file -e "$previous" 2>/dev/null && git merge-base --is-ancestor "$release" "$previous"; then
+if [[ "${KEEP_NEWER_RELEASE:-false}" == true && "$previous" != "$release" ]] && git cat-file -e "$previous" 2>/dev/null && git merge-base --is-ancestor "$release" "$previous"; then
   echo "Keeping newer public release $previous"
   exit 0
 fi
