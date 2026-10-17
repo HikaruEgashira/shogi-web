@@ -7,12 +7,19 @@ release="s3://${SITE_BUCKET}/releases/${GITHUB_SHA}"
 aws s3 sync dist/ "${release}/" --exclude '*.bin' --exclude '*.wasm' --cache-control 'public,max-age=31536000,immutable' --only-show-errors
 # Precompress binary assets: CloudFront does not compress every binary MIME type.
 mkdir -p .cache/publish
+pids=()
 for file in nn.bin progress.bin yaneuraou.wasm; do
-  gzip -n -9 -c "dist/engine/${file}" > ".cache/publish/${file}.gz"
-  content_type=application/octet-stream
-  if [[ "$file" == *.wasm ]]; then content_type=application/wasm; fi
-  aws s3 cp ".cache/publish/${file}.gz" "${release}/engine/${file}" --content-type "$content_type" --content-encoding gzip --cache-control 'public,max-age=31536000,immutable' --only-show-errors
+  (
+    gzip -n -9 -c "dist/engine/${file}" > ".cache/publish/${file}.gz"
+    content_type=application/octet-stream
+    if [[ "$file" == *.wasm ]]; then content_type=application/wasm; fi
+    aws s3 cp ".cache/publish/${file}.gz" "${release}/engine/${file}" --content-type "$content_type" --content-encoding gzip --cache-control 'public,max-age=31536000,immutable' --only-show-errors
+  ) &
+  pids+=("$!")
 done
+status=0
+for pid in "${pids[@]}"; do wait "$pid" || status=$?; done
+if (( status != 0 )); then exit "$status"; fi
 # The candidate URL serves the complete app, so the product is played over the CDN before it can become public.
 candidate="${SITE_URL%/}/releases/${GITHUB_SHA}/index.html"
 bun scripts/smoke.mjs "$candidate" "$GITHUB_SHA"
