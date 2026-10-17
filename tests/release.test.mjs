@@ -127,7 +127,7 @@ test('promotion switches the entry page last, verifies the public site, and rest
       assert.ok(log.indexOf(`releases/${commit}/version.json s3://test-site/version.json --metadata-directive REPLACE --content-type application/json`) < entry);
       const invalidation = log.indexOf('aws cloudfront create-invalidation');
       assert.ok(invalidation > entry);
-      assert.ok(log.indexOf('aws cloudfront wait invalidation-completed --distribution-id test-distribution --id I1') > invalidation);
+      assert.doesNotMatch(log, /aws cloudfront wait/);
       assert.ok(log.indexOf(`scripts/smoke.mjs https://example.test/`) > invalidation);
       const restore = log.indexOf(`aws s3 cp s3://test-site/releases/${previous}/index.html s3://test-site/index.html`);
       if (exit === '1') {
