@@ -112,6 +112,29 @@ test('publishing verifies the candidate over the CDN and never touches the publi
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('one failed engine upload waits for the other uploads and stops before candidate verification', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'shogi-upload-failure-'));
+  try {
+    await mkdir(join(root, 'dist/engine'), { recursive: true });
+    for (const file of ['nn.bin', 'progress.bin', 'yaneuraou.wasm']) await writeFile(join(root, 'dist/engine', file), 'fixture');
+    const publish = await stubs(root, commit);
+    const aws = join(root, 'bin/aws');
+    await writeFile(aws, (await readFile(aws, 'utf8')) + `
+case "$*" in
+  *"/nn.bin "*) exit 1 ;;
+  *"/progress.bin "*) sleep 0.1; echo progress-completed >> "$TEST_LOG" ;;
+  *"/yaneuraou.wasm "*) sleep 0.1; echo wasm-completed >> "$TEST_LOG" ;;
+esac
+`);
+    const { result, logPath } = publish('publish.sh', [], '0');
+    await assert.rejects(result);
+    const log = await readFile(logPath, 'utf8');
+    assert.match(log, /progress-completed/);
+    assert.match(log, /wasm-completed/);
+    assert.doesNotMatch(log, /scripts\/(smoke|play)/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('promotion switches the entry page last, verifies the public site, and restores the previous release on failure', async () => {
   const root = await mkdtemp(join(tmpdir(), 'shogi-promote-'));
   const previous = 'b'.repeat(40);
