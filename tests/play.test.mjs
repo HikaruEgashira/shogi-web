@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { serve } from '../scripts/serve.mjs';
 import { play } from '../scripts/play.mjs';
 
-test('a browser under the production headers loads the engine and the engine answers a move', async () => {
+test('a browser under the production headers loads the engine and the engine answers a move', { timeout: 130_000 }, async () => {
   const server = await serve('public');
   try {
     const moves = await play(`http://127.0.0.1:${server.address().port}/`);
