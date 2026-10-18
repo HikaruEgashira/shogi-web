@@ -1,12 +1,30 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { accessSync, constants } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
-// Headers and checksums (smoke.mjs) cannot see a page that loads and then fails. This drives a real browser
-// through one move over DevTools Protocol, so a release that cannot play shogi never becomes public.
-const chrome = process.env.CHROME_BIN || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : 'google-chrome');
+const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
+// Arm64 Linux has no Google Chrome, so self-hosted runners serve the DevTools protocol from Chromium.
+// CHROME_BIN still wins; otherwise the first browser that exists on PATH is used.
+export function resolveBrowser(env = process.env, platform = process.platform) {
+  if (env.CHROME_BIN) return env.CHROME_BIN;
+  const names = platform === 'darwin' ? [macChrome, 'google-chrome', 'chromium'] : ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
+  for (const name of names) {
+    if (name.includes('/')) {
+      try { accessSync(name, constants.X_OK); return name; } catch {}
+      continue;
+    }
+    for (const directory of (env.PATH ?? '').split(delimiter)) {
+      if (!directory) continue;
+      const candidate = join(directory, name);
+      try { accessSync(candidate, constants.X_OK); return candidate; } catch {}
+    }
+  }
+  return platform === 'darwin' ? macChrome : 'google-chrome';
+}
 
 // Runs inside the page: start with the shortest thinking time, play 7六歩 and wait for the engine's reply.
 const game = `(async () => {
@@ -29,9 +47,16 @@ const game = `(async () => {
   return [...$('history').children].map(item => item.textContent);
 })()`;
 
+// Headers and checksums (smoke.mjs) cannot see a page that loads and then fails. This drives a real browser
+// through one move over DevTools Protocol, so a release that cannot play shogi never becomes public.
 export async function play(url) {
+  const chrome = resolveBrowser();
   const profile = await mkdtemp(join(tmpdir(), 'shogi-chrome-'));
-  const browser = spawn(chrome, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const args = ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu'];
+  // Containerized self-hosted runners run as root, where Chromium cannot use its setuid sandbox.
+  if (process.getuid?.() === 0) args.push('--no-sandbox');
+  args.push('about:blank');
+  const browser = spawn(chrome, args, { stdio: ['ignore', 'ignore', 'pipe'] });
   let alive = true;
   const exited = new Promise(resolve => { browser.on('exit', () => { alive = false; resolve(); }); browser.on('error', () => { alive = false; resolve(); }); });
   try {
