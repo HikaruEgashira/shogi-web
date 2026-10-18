@@ -13,7 +13,7 @@
 
 ## Definition of Done
 
-1. `bun run check` がローカルで通る。Google Chrome が必要で、`CHROME_BIN` で実行ファイルを指定できる。
+1. `bun run check` がローカルで通る。Google Chrome または Chromium が必要で、`CHROME_BIN` で実行ファイルを指定できる。
 2. push 後に `gh run watch` で `Test and deploy` の `build` と `promote` の両方の成功を確認する。`promote` は公開 URL で smoke と実走を行い、失敗すれば直前のリリースへ自動で戻る。
 3. `git status` が clean で origin/main と同期している。
 
