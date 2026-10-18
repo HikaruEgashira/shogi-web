@@ -27,7 +27,7 @@ bun run engine
 
 `engine/manifest.json` にソースのコミット、評価関数URL、評価関数とWASMのSHA-256、アーキテクチャを固定。`bun run build` はこれらのハッシュと、`public/source/` の配布ソースがビルド入力（manifest・patch・build script）と一致することを検査する。エンジンの入力を変えたら再ビルド後に `wasmSha256` を更新する。`engine/browser.patch` はWASMのメモリ・スレッド上限、進行度ファイルの仮想FSパス、盤面情報取得コマンドを変更する。通常ビルドを使い、トーナメント用の簡略千日手判定を有効にしない。
 
-`bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。さらに headless Chrome で本番と同じヘッダーの下にアプリを読み込み、1手指してエンジンの応答を確認する。Google Chrome が必要で、`CHROME_BIN` で実行ファイルを指定できる。`bun scripts/play.mjs URL` は任意のURLに対して同じ実走を行う。
+`bun test` は実際のWASMで成り、二歩、打ち歩詰め、詰み、駒の取得、千日手、30手の自動対局を検証する。さらに headless Chrome で本番と同じヘッダーの下にアプリを読み込み、1手指してエンジンの応答を確認する。Google Chrome または Chromium が必要で、`CHROME_BIN` で実行ファイルを指定できる。未指定なら `google-chrome`、`chromium` の順にPATHから探す。`bun scripts/play.mjs URL` は任意のURLに対して同じ実走を行う。
 
 `ccache` がPATHにあれば `EM_COMPILER_WRAPPER=ccache` でオブジェクトをキャッシュし、エンジンを差分で再ビルドする。CIも `.cache/ccache` を復元するので、`make clean` 後も変更のない翻訳単位は再コンパイルしない。
 
