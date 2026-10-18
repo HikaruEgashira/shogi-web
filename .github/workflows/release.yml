@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 25
     # Pull request pushes supersede each other; every main commit builds in parallel into its own release.
     concurrency:
@@ -102,7 +102,7 @@ jobs:
   promote:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 10
     # Only the switch of the public entry page is serialized; a pending switch is superseded by a newer commit's.
     concurrency:
