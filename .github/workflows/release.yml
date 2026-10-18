@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 25
     # Pull request pushes supersede each other; every main commit builds in parallel into its own release.
     concurrency:
@@ -37,6 +37,7 @@ jobs:
           path: |
             public/engine
             public/source
+          # The built engine is architecture-neutral WASM, so one cache serves every runner.
           key: engine-${{ runner.os }}-${{ steps.engine_key.outputs.value }}
       - name: Fetch the published engine when its build inputs are unchanged
         id: fetch
@@ -50,15 +51,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .cache/emsdk
-          key: emsdk-3.1.43-${{ runner.os }}-8f685c26ee9f672081e61e22c6aa60fa972d00a9
+          key: emsdk-3.1.43-${{ runner.os }}-${{ runner.arch }}-8f685c26ee9f672081e61e22c6aa60fa972d00a9
       - name: Cache Emscripten objects
         if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .cache/ccache
-          key: ccache-${{ runner.os }}-${{ steps.engine_key.outputs.value }}
+          key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ steps.engine_key.outputs.value }}
           restore-keys: |
-            ccache-${{ runner.os }}-
+            ccache-${{ runner.os }}-${{ runner.arch }}-
       - name: Install pinned Emscripten
         if: steps.engine.outputs.cache-hit != 'true' && steps.fetch.outcome != 'success'
         run: |
@@ -102,7 +103,7 @@ jobs:
   promote:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 10
     # Only the switch of the public entry page is serialized; a pending switch is superseded by a newer commit's.
     concurrency:
