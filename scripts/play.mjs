@@ -31,7 +31,9 @@ const game = `(async () => {
 
 export async function play(url) {
   const profile = await mkdtemp(join(tmpdir(), 'shogi-chrome-'));
-  const browser = spawn(chrome, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  // The flash image runs jobs as root, where Chrome refuses to start without --no-sandbox, and gives
+  // containers little shared memory, which --disable-dev-shm-usage works around.
+  const browser = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let alive = true;
   const exited = new Promise(resolve => { browser.on('exit', () => { alive = false; resolve(); }); browser.on('error', () => { alive = false; resolve(); }); });
   try {

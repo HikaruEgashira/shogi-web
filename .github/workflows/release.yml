@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 25
     # Pull request pushes supersede each other; every main commit builds in parallel into its own release.
     concurrency:
@@ -27,6 +27,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
+      - uses: ./.github/actions/browser
       - name: Compute the engine build key
         id: engine_key
         run: echo "value=$(bun scripts/engine-inputs.mjs)" >> "$GITHUB_OUTPUT"
@@ -102,7 +103,7 @@ jobs:
   promote:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, hikae-flash]
     timeout-minutes: 10
     # Only the switch of the public entry page is serialized; a pending switch is superseded by a newer commit's.
     concurrency:
@@ -119,6 +120,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
+      - uses: ./.github/actions/browser
       - name: Authenticate with AWS OIDC
         uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
