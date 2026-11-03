@@ -1,5 +1,5 @@
 name: Headless browser
-description: Install the Chromium the play test drives; the hikae-flash image ships no browser.
+description: Install the Chromium the play test drives; the hikae-2vcpu-ubuntu-2404-arm image ships no browser.
 
 runs:
   using: composite
