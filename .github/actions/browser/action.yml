@@ -1,5 +1,5 @@
 name: Headless browser
-description: Install the Chromium the play test drives; the hikae-2vcpu-ubuntu-2404-arm image ships no browser.
+description: Install the Chromium the play test drives; the hikae-2vcpu-ubuntu-2404 image ships no browser.
 
 runs:
   using: composite
@@ -10,4 +10,4 @@ runs:
       # Bake Chromium into projects/github-runners/flash/image when downloads dominate.
       run: |
         bunx playwright@1.62.0 install --with-deps chromium
-        echo "CHROME_BIN=$(find "$HOME/.cache/ms-playwright" -path '*chromium-*/chrome-linux/chrome' -type f | head -1)" >> "$GITHUB_ENV"
+        echo "CHROME_BIN=$(find "$HOME/.cache/ms-playwright" -path '*chromium-*/chrome-linux*/chrome' -type f | head -1)" >> "$GITHUB_ENV"
