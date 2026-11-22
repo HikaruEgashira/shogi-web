@@ -4,10 +4,15 @@ description: Install the Chromium the play test drives; the hikae-2vcpu-ubuntu-2
 runs:
   using: composite
   steps:
+    # The Chromium download dominated the scheduled smoke; the Actions cache keeps it between runs.
+    - name: Cache Chromium
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-1.62.0-chromium-${{ runner.os }}-${{ runner.arch }}
     - name: Install Chromium and export CHROME_BIN
       shell: bash
-      # ponytail: installs on every run because the fleet has no shared browser cache.
-      # Bake Chromium into projects/github-runners/flash/image when downloads dominate.
+      # Playwright skips the download when the cached build is present; --with-deps still installs the system libraries.
       run: |
         bunx playwright@1.62.0 install --with-deps chromium
         echo "CHROME_BIN=$(find "$HOME/.cache/ms-playwright" -path '*chromium-*/chrome-linux*/chrome' -type f | head -1)" >> "$GITHUB_ENV"
